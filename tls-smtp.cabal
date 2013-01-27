@@ -4,13 +4,13 @@
 name:                tls-smtp
 version:             0.1.0.0
 synopsis:            SMTP on TLS
--- description:         
+description:         This uses as much of the smtp-mail package as possible to work with TLS authentication.
 homepage:            https://github.com/erochest/tls-smtp
 license:             Apache-2.0
 license-file:        LICENSE
 author:              Eric Rochester
 maintainer:          erochest@gmail.com
--- copyright:           
+copyright:           2013 Eric Rochester
 category:            Network
 build-type:          Simple
 cabal-version:       >=1.8
@@ -18,8 +18,9 @@ cabal-version:       >=1.8
 library
   -- exposed-modules:     
   -- other-modules:       
-  build-depends:       base ==4.5.*
-test-suite PROJECT-specs
+  build-depends:       base == 4.5.*
+
+test-suite tls-smtp-specs
   type:                exitcode-stdio-1.0
   hs-source-dirs:      specs
   main-is:             Specs.hs
@@ -29,4 +30,4 @@ test-suite PROJECT-specs
 
 source-repository this
   type:                git
-  location:            git://github.com/erochest/PROJECT.git
+  location:            git://github.com/erochest/tls-smtp.git
