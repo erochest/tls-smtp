@@ -6,7 +6,7 @@ import Test.Hspec
 
 main :: IO ()
 main = hspec $
-    description "Specs" $
+    describe "Specs" $
         it "should have something." $
             pending "Fill in."
 
