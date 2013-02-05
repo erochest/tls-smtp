@@ -51,20 +51,13 @@ tlsParams = defaultParamsClient { pCiphers = ciphers }
 write :: Handle -> String -> IO ()
 write h cmd = do
         hPrintf h "%s\r\n" cmd
-        printf ">>> %s\n" cmd
-        hFlush stdout
-
-writebs :: Handle -> B.ByteString -> IO ()
-writebs h cmd = do
-        B.hPut h cmd
-        hPutStr h "\r\n"
-        printf ">>> %s\n" . T.unpack $ TE.decodeUtf8 cmd
-        hFlush stdout
+        -- printf ">>> %s\n" cmd
+        -- hFlush stdout
 
 waitFor :: Handle -> String -> IO ()
 waitFor h str = do
         ln <- hGetLine h
-        putStrLn $ "<<< " <> ln
+        -- putStrLn $ "<<< " <> ln
         unless (str `isPrefixOf` ln) (waitFor h str)
         hFlush stdout
 
@@ -92,8 +85,8 @@ tlsWrite :: Writeable a => Context -> a -> IO ()
 tlsWrite ctx cmd = do
         sendData ctx $ toCommand cmd
         contextFlush ctx
-        printf ">>> %s\n" $ toDebug cmd
-        hFlush stdout
+        -- printf ">>> %s\n" $ toDebug cmd
+        -- hFlush stdout
 
 crlf :: BL.ByteString
 crlf = BCL.pack "\r\n"
@@ -102,8 +95,8 @@ crlf = BCL.pack "\r\n"
 tlsWaitFor :: Context -> T.Text -> IO ()
 tlsWaitFor ctx str = do
         lns <- T.lines . TE.decodeUtf8 <$> recvData ctx
-        forM_ lns $ printf . T.unpack . ("<<< " <>) . (<> "\n")
-        hFlush stdout
+        -- forM_ lns $ printf . T.unpack . ("<<< " <>) . (<> "\n")
+        -- hFlush stdout
         case filter (T.isPrefixOf str) lns of
             [] -> tlsWaitFor ctx str
             _  -> return ()
@@ -138,16 +131,16 @@ sendMailTls' host port user passwd mail = do
 
         ctx <- contextNewOnHandle h tlsParams g
         let sendLine = tlsWrite ctx
-        putStrLn "handshake"
+        -- putStrLn "handshake"
         handshake ctx
 
-        putStrLn "login"
+        -- putStrLn "login"
         tlsWriteWait ctx ("EHLO" :: String) "250"
         tlsWriteWait ctx ("AUTH LOGIN" :: String) "334"
         tlsWriteWait ctx (b64 user) "334"
         tlsWriteWait ctx (b64 passwd) "235"
 
-        putStrLn "renderAndSend"
+        -- putStrLn "renderAndSend"
         mailbs <- renderMail' mail
         writeAddress ctx "MAIL FROM" $ mailFrom mail
         let rcpts = concatMap (\f -> f mail) [mailTo, mailCc, mailBcc]
@@ -158,7 +151,7 @@ sendMailTls' host port user passwd mail = do
         mapM_ sendLine $ BCL.toChunks dot
         tlsWaitFor ctx "250"
 
-        putStrLn "bye"
+        -- putStrLn "bye"
         bye ctx
 
     where 
