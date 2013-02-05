@@ -47,18 +47,21 @@ write :: Handle -> String -> IO ()
 write h cmd = do
         hPrintf h "%s\r\n" cmd
         printf ">>> %s\n" cmd
+        hFlush stdout
 
 writebs :: Handle -> B.ByteString -> IO ()
 writebs h cmd = do
         B.hPut h cmd
         hPutStr h "\r\n"
         printf ">>> %s\n" . T.unpack $ TE.decodeUtf8 cmd
+        hFlush stdout
 
 waitFor :: Handle -> String -> IO ()
 waitFor h str = do
         ln <- hGetLine h
         putStrLn $ "<<< " <> ln
         unless (str `isPrefixOf` ln) (waitFor h str)
+        hFlush stdout
 
 tlsWrite :: Context -> String -> IO ()
 tlsWrite ctx cmd = do
@@ -69,22 +72,26 @@ tlsWrite ctx cmd = do
                      . printf "%s\r\n"
                      $ cmd
         printf ">>> %s\n" cmd
+        hFlush stdout
 
 tlsWritebs :: Context -> B.ByteString -> IO ()
 tlsWritebs ctx cmd = do
         sendData ctx $ fromChunks [cmd, "\r\n"]
         printf ">>> %s\n" . T.unpack $ TE.decodeUtf8 cmd
+        hFlush stdout
 
 tlsWaitFor :: Context -> String -> IO ()
 tlsWaitFor ctx str = do
+        -- recvData ctx >>= printf . T.unpack . ("<<< " <>) . TE.decodeUtf8
         -- [ln] <- take 1
         --       . filter (T.isPrefixOf (T.pack str))
         lns <- takeWhile (not . T.isPrefixOf (T.pack str))
               . T.lines
               . TE.decodeUtf8
             <$> recvData ctx
-        -- printf . T.unpack $ "<<< " <> ln
+        printf . T.unpack $ "<<< " <> ln
         forM_ lns $ printf . T.unpack . ("<<< " <>)
+        hFlush stdout
 
 sendMailTls :: HostName -> UserName -> Password -> Mail -> IO ()
 sendMailTls host = sendMailTls' host 587
@@ -114,10 +121,13 @@ sendMailTls' host port user passwd mail = do
         putStrLn "login"
         tlsWrite ctx "EHLO"
         tlsWaitFor ctx "250"
+        -- tlsWritebs ctx $ "AUTH LOGIN " <> b64 user
         tlsWrite ctx "AUTH LOGIN"
+        tlsWaitFor ctx "334"
         tlsWritebs ctx $ b64 user
+        tlsWaitFor ctx "334"
         tlsWritebs ctx $ b64 passwd
-        tlsWaitFor ctx "220"
+        tlsWaitFor ctx "235"
 
         -- _ <- login smtp user passwd
         -- putStrLn "renderAndSend"
