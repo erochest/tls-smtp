@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 
 -- | This is a fairly simple module that just connects the smtp-mail package
 -- with the tls package. Hopefully this will make it easier to connect to, say,
@@ -19,7 +20,8 @@ import           Control.Monad (unless, forM_)
 import qualified Crypto.Random.AESCtr as RNG
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
-import           Data.ByteString.Lazy (fromChunks)
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Lazy.Char8 as BCL
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import           Data.List (isPrefixOf)
@@ -65,7 +67,7 @@ waitFor h str = do
 
 tlsWrite :: Context -> String -> IO ()
 tlsWrite ctx cmd = do
-        sendData ctx . fromChunks
+        sendData ctx . BL.fromChunks
                      . (:[])
                      . TE.encodeUtf8
                      . T.pack
@@ -76,22 +78,32 @@ tlsWrite ctx cmd = do
 
 tlsWritebs :: Context -> B.ByteString -> IO ()
 tlsWritebs ctx cmd = do
-        sendData ctx $ fromChunks [cmd, "\r\n"]
+        sendData ctx $ BL.fromChunks [cmd, "\r\n"]
         printf ">>> %s\n" . T.unpack $ TE.decodeUtf8 cmd
         hFlush stdout
 
+tlsBsPutCrLf :: Context -> B.ByteString -> IO ()
+tlsBsPutCrLf ctx s = do
+        sendData ctx $ BL.fromChunks [s]
+        sendData ctx crlf
+        contextFlush ctx
+
+crlf :: BL.ByteString
+crlf = BCL.pack "\r\n"
+
+-- TODO: Add timeout
 tlsWaitFor :: Context -> String -> IO ()
 tlsWaitFor ctx str = do
         -- recvData ctx >>= printf . T.unpack . ("<<< " <>) . TE.decodeUtf8
         -- [ln] <- take 1
         --       . filter (T.isPrefixOf (T.pack str))
-        lns <- takeWhile (not . T.isPrefixOf (T.pack str))
-              . T.lines
-              . TE.decodeUtf8
-            <$> recvData ctx
-        printf . T.unpack $ "<<< " <> ln
-        forM_ lns $ printf . T.unpack . ("<<< " <>)
+        lns <- T.lines . TE.decodeUtf8 <$> recvData ctx
+        -- printf . T.unpack $ "<<< " <> ln
+        forM_ lns $ printf . T.unpack . ("<<< " <>) . (<> "\n")
         hFlush stdout
+        case filter (T.isPrefixOf (T.pack str)) lns of
+            [] -> tlsWaitFor ctx str
+            _  -> return ()
 
 sendMailTls :: HostName -> UserName -> Password -> Mail -> IO ()
 sendMailTls host = sendMailTls' host 587
@@ -101,6 +113,11 @@ b64 = B64.encode . B.pack . map (toEnum . fromEnum)
 
 -- TODO: option to pass in TLSParams
 -- TODO: run in EitherT.
+
+writeAddress :: Context -> T.Text -> Address -> IO ()
+writeAddress ctx cmd Address{..} = do
+        tlsWrite ctx . T.unpack $ cmd <> ":<" <> addressEmail <> ">"
+        tlsWaitFor ctx "250"
 
 sendMailTls' :: HostName -> Int -> UserName -> Password -> Mail -> IO ()
 sendMailTls' host port user passwd mail = do
@@ -115,13 +132,13 @@ sendMailTls' host port user passwd mail = do
         waitFor h "220"
 
         ctx <- contextNewOnHandle h tlsParams g
+        let sendLine = tlsBsPutCrLf ctx
         putStrLn "handshake"
         handshake ctx
 
         putStrLn "login"
         tlsWrite ctx "EHLO"
         tlsWaitFor ctx "250"
-        -- tlsWritebs ctx $ "AUTH LOGIN " <> b64 user
         tlsWrite ctx "AUTH LOGIN"
         tlsWaitFor ctx "334"
         tlsWritebs ctx $ b64 user
@@ -129,14 +146,29 @@ sendMailTls' host port user passwd mail = do
         tlsWritebs ctx $ b64 passwd
         tlsWaitFor ctx "235"
 
-        -- _ <- login smtp user passwd
-        -- putStrLn "renderAndSend"
-        -- renderAndSend smtp mail
-        -- putStrLn "closeSMTP"
-        -- closeSMTP smtp
+        putStrLn "renderAndSend"
+        mailbs <- renderMail' mail
+        writeAddress ctx "MAIL FROM" $ mailFrom mail
+        let rcpts = concatMap (\f -> f mail) [mailTo, mailCc, mailBcc]
+        forM_ rcpts $ writeAddress ctx "RCPT TO"
+        tlsWrite ctx "DATA"
+        tlsWaitFor ctx "354"
+
+        putStrLn $ "SENDING " <> show mailbs
+        mapM_ sendLine . concatMap BCL.toChunks $ split mailbs
+        mapM_ sendLine $ BCL.toChunks dot
 
         putStrLn "bye"
         bye ctx
+
+    where 
+        split = map (padDot . stripCR) . BCL.split '\r'
+        -- remove \r at the end of a line
+        stripCR s = if cr `BL.isSuffixOf` s then BL.init s else s
+        -- duplicate . at the start of a line
+        padDot s = if dot `BL.isPrefixOf` s then dot <> s else s
+        cr = BCL.pack "\r"
+        dot = BCL.pack "."
 
 {-
         g    <- RNG.makeSystem

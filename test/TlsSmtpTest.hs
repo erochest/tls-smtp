@@ -100,7 +100,7 @@ main = do
         user <- getEnv "SMTP_USER"
         pass <- getEnv "SMTP_PASS"
         now  <- getCurrentTime
-        mail <- simpleMail from to subject
+        mail <- simpleMail to from subject
                            (body <> TL.pack (show now))
                            (html <> "<p>" <> TL.pack (show now) <> "</p>")
                            []
