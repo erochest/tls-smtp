@@ -75,8 +75,8 @@ import System.Environment (getEnv, getEnvironment)
 from    = Address Nothing "erochest@gmail.com"
 to      = Address Nothing "eric@ericrochester.com"
 subject = "Test Email"
-body    = "email body" :: TL.Text
-html    = "<h1>HTML</h1>\n<p>Hi-ya!</p>" :: TL.Text
+body    = "email body\n\n" :: TL.Text
+html    = "<h1>HTML</h1>\n<p>Hi-ya!</p>\n" :: TL.Text
 
 -- From smtp-mail:
 
