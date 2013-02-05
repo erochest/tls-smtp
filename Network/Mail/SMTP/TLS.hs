@@ -24,11 +24,10 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Char8 as BCL
+import           Data.List (isPrefixOf)
 import           Data.Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
-import           Data.List (isPrefixOf)
-import           Data.Monoid
 import           Network
 import           Network.Mail.Mime
 import           Network.Mail.SMTP
@@ -49,8 +48,7 @@ tlsParams :: TLSParams
 tlsParams = defaultParamsClient { pCiphers = ciphers }
 
 write :: Handle -> String -> IO ()
-write h cmd = do
-        hPrintf h "%s\r\n" cmd
+write h = hPrintf h "%s\r\n"
         -- printf ">>> %s\n" cmd
         -- hFlush stdout
 
