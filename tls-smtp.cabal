@@ -17,16 +17,14 @@ cabal-version:       >=1.8
 
 library
   exposed-modules:     Network.Mail.SMTP.TLS
-  -- other-modules:       
   build-depends:       base              == 4.6.*
                      , tls               == 1.1.*
                      , tls-extra         == 0.6.*
-                     , crypto-random-api == 0.2.*
-                     , crypto-api        == 0.10.*
+                     , crypto-random
                      , smtp-mail         == 0.1.*
                      , network           == 2.4.*
                      , mime-mail         == 0.4.*
-                     , cprng-aes         == 0.3.*
+                     , cprng-aes         == 0.5.*
                      , text              == 0.11.*
                      , bytestring        == 0.10.*
                      , base64-bytestring == 1.0.*
@@ -41,13 +39,10 @@ test-suite tls-smtp-test
                        , smtp-mail         == 0.1.*
                        , time              == 1.4
                        , text              == 0.11.*
-                       , cprng-aes         == 0.3.*
+                       , cprng-aes         == 0.5.*
                        , tls               == 1.1.*
                        , tls-extra         == 0.6.*
-                       , crypto-random-api == 0.2.*
-                       , crypto-api        == 0.10.*
                        , mime-mail         == 0.4.*
-                       , cprng-aes         == 0.3.*
 
 source-repository this
   type:                git

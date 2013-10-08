@@ -19,6 +19,7 @@ module Network.Mail.SMTP.TLS
 
 import           Control.Applicative
 import           Control.Monad (unless, forM_)
+import           Crypto.Random (CPRG)
 import qualified Crypto.Random.AESCtr as RNG
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
